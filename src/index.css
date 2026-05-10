@@ -1,0 +1,39 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --font-base: 22px;
+  --font-lg: 28px;
+  --font-xl: 36px;
+  --font-title: 48px;
+  --radius: 20px;
+  --shadow: 0 6px 20px rgba(0,0,0,0.15);
+  --bg: #f5f0eb;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  font-size: var(--font-base);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+button:active {
+  transform: scale(0.97);
+  transition: transform 0.1s;
+}
