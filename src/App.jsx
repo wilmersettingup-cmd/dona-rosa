@@ -5,12 +5,14 @@ import { useAuth } from './context/AuthContext'
 import { t, LOCALE_MAP } from './i18n/t'
 import ChatRosa from './components/ChatRosa'
 import BurbujaRosa from './components/BurbujaRosa'
+import ActivacionVoz from './components/ActivacionVoz'
 import PantallaAjustes from './components/PantallaAjustes'
 import PantallaAuth from './components/auth/PantallaAuth'
 import PantallaLlamarFamilia from './components/PantallaLlamarFamilia'
 import PantallaVerFotos from './components/PantallaVerFotos'
 import PantallaPagarServicios from './components/PantallaPagarServicios'
 import PantallaNecesitoAyuda from './components/PantallaNecesitoAyuda'
+import { hayReconocimiento } from './hooks/useVoz'
 
 const PANTALLAS = {
   INICIO: 'inicio',
@@ -243,18 +245,18 @@ function Encabezado({ pantalla, onVolver, user, onAjustes, onCerrarSesion }) {
 }
 
 /* ── Pantalla principal ── */
-function PantallaInicio({ onNavegar }) {
+function PantallaInicio({ onNavegar, guidanceTarget }) {
   const hora = usarHora()
   const { lang } = useApp()
   const h = hora.getHours()
   const saludo = h < 12 ? t('buenos_dias', lang) : h < 19 ? t('buenas_tardes', lang) : t('buenas_noches', lang)
 
   const botones = [
-    { id: PANTALLAS.LLAMAR, icono: '📞', key: 'llamar_familia', clase: 'boton-verde'  },
-    { id: PANTALLAS.FOTOS,  icono: '🖼️', key: 'ver_fotos',      clase: 'boton-azul'   },
-    { id: PANTALLAS.PAGAR,  icono: '💳', key: 'pagar_servicios', clase: 'boton-naranja' },
-    { id: PANTALLAS.AYUDA,  icono: '🆘', key: 'necesito_ayuda',  clase: 'boton-rojo'   },
-    { id: PANTALLAS.LIBRE,  icono: '🌸', key: 'hablar_rosa',     clase: 'boton-morado boton-libre' },
+    { id: PANTALLAS.LLAMAR, voz: 'llamar', icono: '📞', key: 'llamar_familia', clase: 'boton-verde'  },
+    { id: PANTALLAS.FOTOS,  voz: 'fotos',  icono: '🖼️', key: 'ver_fotos',      clase: 'boton-azul'   },
+    { id: PANTALLAS.PAGAR,  voz: 'pagar',  icono: '💳', key: 'pagar_servicios', clase: 'boton-naranja' },
+    { id: PANTALLAS.AYUDA,  voz: 'ayuda',  icono: '🆘', key: 'necesito_ayuda',  clase: 'boton-rojo'   },
+    { id: PANTALLAS.LIBRE,  voz: 'rosa',   icono: '🌸', key: 'hablar_rosa',     clase: 'boton-morado boton-libre' },
   ]
 
   return (
@@ -266,7 +268,12 @@ function PantallaInicio({ onNavegar }) {
       </div>
       <div className="grid-botones">
         {botones.map(b => (
-          <button key={b.id} className={`boton-principal ${b.clase}`} onClick={() => onNavegar(b.id)}>
+          <button
+            key={b.id}
+            id={`btn-voz-${b.voz}`}
+            className={`boton-principal ${b.clase}${guidanceTarget === b.voz ? ' boton-guiado' : ''}`}
+            onClick={() => onNavegar(b.id)}
+          >
             <span className="icono">{b.icono}</span>
             {t(b.key, lang)}
           </button>
@@ -280,7 +287,8 @@ function PantallaInicio({ onNavegar }) {
 export default function App() {
   const [pantalla, setPantalla]         = useState(PANTALLAS.INICIO)
   const [modoSinLogin, setModoSinLogin] = useState(false)
-  const { lang, sincronizarDesdeFirestore } = useApp()
+  const [guidanceTarget, setGuidanceTarget] = useState(null)
+  const { lang, idioma, sincronizarDesdeFirestore } = useApp()
   const { user, loading, cerrarSesion, firebaseConfigurado } = useAuth()
 
   useEffect(() => {
@@ -288,15 +296,11 @@ export default function App() {
   }, [user?.uid])
 
   function navegar(destino) { setPantalla(destino) }
-
   function irAjustes() {
     setPantalla(prev => prev === PANTALLAS.AJUSTES ? PANTALLAS.INICIO : PANTALLAS.AJUSTES)
   }
-
   function handleCerrarSesion() {
-    cerrarSesion()
-    setModoSinLogin(false)
-    setPantalla(PANTALLAS.INICIO)
+    cerrarSesion(); setModoSinLogin(false); setPantalla(PANTALLAS.INICIO)
   }
 
   /* ── Pantalla de carga ── */
@@ -319,11 +323,12 @@ export default function App() {
 
   const esChat    = PANTALLAS_CHAT.has(pantalla)
   const esClasica = PANTALLAS_CLASICAS.has(pantalla)
+  const esInicio  = pantalla === PANTALLAS.INICIO
 
   function renderContenido() {
     if (esChat) return <ChatRosa contexto={pantalla} onCerrar={() => setPantalla(PANTALLAS.INICIO)} onNavegar={navegar} />
     if (pantalla === PANTALLAS.AJUSTES) return <PantallaAjustes />
-    return <PantallaInicio onNavegar={navegar} />
+    return <PantallaInicio onNavegar={navegar} guidanceTarget={guidanceTarget} />
   }
 
   return (
@@ -341,7 +346,33 @@ export default function App() {
         : renderContenido()
       }
 
+      {/* Burbuja flotante manual */}
       {!esChat && <BurbujaRosa onNavegar={navegar} />}
+
+      {/* Wake word — siempre activo, envuelto en la burbuja flotante */}
+      {!esChat && hayReconocimiento() && (
+        <div style={{ position: 'fixed', bottom: 28, right: 112, zIndex: 501 }}>
+          <div
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4c1d95, #6b3fa0)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(76,29,149,0.45)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              position: 'relative', cursor: 'default',
+            }}
+            title={lang === 'es' ? 'Di "Doña Rosa"' : 'Say "Doña Rosa"'}
+          >
+            <span style={{ fontSize: 22 }}>🎙️</span>
+            <ActivacionVoz
+              idioma={idioma}
+              lang={lang}
+              onGuia={setGuidanceTarget}
+              onDismiss={() => setGuidanceTarget(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
