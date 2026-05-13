@@ -378,15 +378,15 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6b3fa0);
+  background: linear-gradient(145deg, #180e38 0%, #3d2575 100%);
   color: white;
   font-size: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: 3px solid rgba(255,255,255,0.35);
-  box-shadow: 0 6px 24px rgba(107,63,160,0.55);
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 8px 28px rgba(18, 8, 51, 0.4), 0 2px 8px rgba(18, 8, 51, 0.2);
   transition: transform 0.2s, box-shadow 0.2s;
   animation: burbuja-idle 3.5s ease-in-out infinite;
   user-select: none;
@@ -491,14 +491,16 @@
 }
 
 /* ===== 5TO BOTÓN — HABLAR CON ROSA ===== */
-.boton-morado { background: linear-gradient(135deg, #7c3aed, #6b3fa0); }
+.boton-morado {
+  background: linear-gradient(150deg, #0d0620 0%, #3d2575 100%);
+}
 .boton-libre  {
   grid-column: 1 / -1;
-  max-width: 400px;
+  max-width: 500px;
   justify-self: center;
   width: 100%;
-  min-height: 130px;
-  font-size: 28px;
+  min-height: 140px;
+  font-size: 24px;
 }
 
 /* ===== CONFIRMACIÓN DE ACCIÓN ===== */
@@ -786,7 +788,7 @@
 }
 
 .chat-rosa-header {
-  background: #6b3fa0;
+  background: linear-gradient(135deg, #180e38 0%, #2d1b69 100%);
   color: white;
   padding: 16px 20px;
   display: flex;
@@ -806,7 +808,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #f5f0eb;
+  background: var(--p50);
 }
 
 .burbuja-chat {
@@ -873,7 +875,7 @@
 }
 
 .chat-rosa-input-area {
-  background: white;
+  background: var(--p50);
   padding: 16px;
   flex-shrink: 0;
   border-top: 2px solid #e5e7eb;
@@ -937,30 +939,34 @@
 
 /* ===== ENCABEZADO ===== */
 .encabezado {
-  background: #6b3fa0;
+  background: linear-gradient(135deg, #180e38 0%, #2d1b69 100%);
   color: white;
-  padding: 20px 30px;
+  padding: 18px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 20px rgba(18, 8, 51, 0.35);
 }
 
 .encabezado h1 {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: -0.5px;
 }
 
 .encabezado .saludo {
-  font-size: 22px;
-  opacity: 0.9;
+  font-size: 14px;
+  opacity: 0.65;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  margin-top: 2px;
 }
 
 .encabezado .hora {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
-  text-align: right;
+  letter-spacing: -0.3px;
+  opacity: 0.9;
 }
 
 /* ===== PANTALLA PRINCIPAL ===== */
@@ -970,34 +976,36 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  gap: 20px;
+  padding: 36px 20px 48px;
+  gap: 28px;
 }
 
 .bienvenida {
   text-align: center;
-  margin-bottom: 10px;
 }
 
 .bienvenida h2 {
-  font-size: 30px;
-  color: #4a2d7a;
-  font-weight: 600;
+  font-size: 28px;
+  color: #180e38;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
 }
 
 .bienvenida p {
-  font-size: 22px;
-  color: #666;
-  margin-top: 8px;
+  font-size: 18px;
+  color: #6b5b90;
+  margin-top: 6px;
+  font-weight: 400;
 }
 
 /* ===== GRID DE BOTONES ===== */
 .grid-botones {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 14px;
   width: 100%;
-  max-width: 800px;
+  max-width: 480px;
 }
 
 .boton-principal {
@@ -1005,52 +1013,58 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 36px 20px;
-  border-radius: var(--radius);
-  color: white;
-  font-size: 26px;
+  gap: 14px;
+  padding: 28px 16px;
+  border-radius: 22px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 20px;
   font-weight: 700;
-  min-height: 180px;
-  box-shadow: var(--shadow);
-  transition: transform 0.15s, box-shadow 0.15s;
+  min-height: 140px;
+  box-shadow: 0 8px 28px rgba(18, 8, 51, 0.22), 0 2px 8px rgba(18, 8, 51, 0.1);
+  transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s ease;
   text-align: center;
   line-height: 1.3;
+  letter-spacing: -0.2px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .boton-principal:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(18, 8, 51, 0.3), 0 4px 12px rgba(18, 8, 51, 0.15);
 }
 
 .boton-principal:active {
   transform: scale(0.96) !important;
+  box-shadow: 0 4px 16px rgba(18, 8, 51, 0.2) !important;
 }
 
-.boton-principal .icono {
-  font-size: 56px;
-  line-height: 1;
+.boton-principal .icono-svg {
+  opacity: 0.92;
+  flex-shrink: 0;
 }
 
-.boton-verde    { background: #2e9e5b; }
-.boton-azul     { background: #2563eb; }
-.boton-naranja  { background: #e07b10; }
-.boton-rojo     { background: #dc2626; }
+/* Paleta monocromática — todos en la misma familia morada */
+.boton-verde   { background: linear-gradient(150deg, #1a1042 0%, #4a3080 100%); }
+.boton-azul    { background: linear-gradient(150deg, #221450 0%, #563a8e 100%); }
+.boton-naranja { background: linear-gradient(150deg, #2a1a5e 0%, #62459c 100%); }
+.boton-rojo    { background: linear-gradient(150deg, #31206c 0%, #6e50aa 100%); }
 
 /* ===== PANTALLA INTERNA (subpantallas) ===== */
 .pantalla-interna {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: var(--p50);
 }
 
 .barra-superior {
-  background: #6b3fa0;
+  background: linear-gradient(135deg, #180e38 0%, #2d1b69 100%);
   color: white;
-  padding: 18px 24px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  box-shadow: 0 2px 16px rgba(18, 8, 51, 0.3);
 }
 
 .btn-volver {
@@ -1076,6 +1090,7 @@
   flex: 1;
   padding: 30px 24px;
   overflow-y: auto;
+  background: var(--p50);
 }
 
 /* ===== PANTALLA: LLAMAR FAMILIA ===== */
@@ -1311,8 +1326,8 @@
 }
 
 .btn-ayuda-opcion:hover {
-  background: #f5f0eb;
-  border-color: #dc2626;
+  background: var(--p100);
+  border-color: #6b4fb8;
 }
 
 .btn-ayuda-opcion .icono {
@@ -1384,27 +1399,149 @@
   border-radius: 14px;
 }
 
+/* ===== DIAGNÓSTICO CONVERSACIONAL ===== */
+.opciones-card {
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  margin-top: 8px;
+  box-shadow: 0 4px 16px rgba(18, 8, 51, 0.12);
+  border: 1.5px solid var(--p100);
+  max-width: 85%;
+  align-self: flex-start;
+}
+
+.opciones-pregunta {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--p900);
+  margin: 0 0 14px;
+  line-height: 1.4;
+}
+
+.opciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-opcion {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--p50);
+  border: 2px solid var(--p100);
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--p900);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  width: 100%;
+  font-family: inherit;
+}
+
+.btn-opcion:hover {
+  background: var(--p100);
+  border-color: var(--p400);
+  transform: translateX(4px);
+}
+
+.btn-opcion:active {
+  transform: scale(0.97);
+}
+
+.btn-opcion-emoji {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.btn-opcion-label {
+  flex: 1;
+}
+
+.confirmacion-card {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 2px solid #2e9e5b;
+  border-radius: 18px;
+  padding: 20px;
+  margin-top: 8px;
+  max-width: 85%;
+  align-self: flex-start;
+}
+
+.confirmacion-texto {
+  font-size: 20px;
+  font-weight: 600;
+  color: #166534;
+  margin: 0 0 14px;
+  line-height: 1.4;
+}
+
+.confirmacion-botones {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-confirmar-si {
+  flex: 1;
+  background: #2e9e5b;
+  color: white;
+  font-size: 22px;
+  font-weight: 800;
+  padding: 16px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(46,158,91,0.4);
+  transition: background 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+
+.btn-confirmar-si:hover  { background: #247a48; }
+.btn-confirmar-si:active { transform: scale(0.96); }
+
+.btn-confirmar-no {
+  flex: 1;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 22px;
+  font-weight: 800;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid #d1d5db;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+
+.btn-confirmar-no:hover  { background: #e5e7eb; }
+.btn-confirmar-no:active { transform: scale(0.96); }
+
 /* ===== RESPONSIVE MÓVIL ===== */
 @media (max-width: 600px) {
-  .encabezado h1 { font-size: 28px; }
-  .encabezado .saludo { font-size: 18px; }
-  .encabezado .hora { font-size: 22px; }
+  .encabezado { padding: 14px 16px; }
+  .encabezado h1 { font-size: 24px; }
+  .encabezado .hora { font-size: 19px; }
 
-  .grid-botones {
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
+  .grid-botones { gap: 12px; max-width: 100%; }
 
   .boton-principal {
-    font-size: 22px;
-    padding: 28px 12px;
-    min-height: 150px;
+    font-size: 18px;
+    padding: 22px 12px;
+    min-height: 120px;
+    gap: 10px;
+    border-radius: 18px;
   }
 
-  .boton-principal .icono { font-size: 44px; }
+  .boton-libre { min-height: 112px; font-size: 20px !important; }
 
   .bienvenida h2 { font-size: 24px; }
-  .bienvenida p { font-size: 18px; }
+  .bienvenida p  { font-size: 16px; }
 
   .opciones-ayuda { grid-template-columns: 1fr; }
 

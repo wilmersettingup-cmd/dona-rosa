@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Anthropic from '@anthropic-ai/sdk'
-import { getApiKey } from './PantallaAjustes'
+import { getApiKey } from '../utils/storage'
 import {
-  detectarIdioma, hayReconocimiento,
+  hayReconocimiento,
   useReconocimientoVoz, useSintesisVoz,
 } from '../hooks/useVoz'
 import { useApp, PLANES, LIMITE_FREE } from '../context/AppContext'
 import { t } from '../i18n/t'
 
-/* ─── Contextos ─── */
+/* ─── Saludos contextuales ─── */
 const SALUDOS = {
   llamar: { es:'Hola, soy Rosa. ¿A quién de tu familia deseas llamar?', en:"Hi, I'm Rosa. Who would you like to call?", pt:'Olá, sou Rosa. A quem deseja ligar?', fr:'Bonjour, je suis Rosa. Qui voulez-vous appeler?', it:'Ciao, sono Rosa. Chi vuoi chiamare?', de:'Hallo, ich bin Rosa. Wen möchten Sie anrufen?' },
   fotos:  { es:'Hola, soy Rosa. ¿Qué álbum de fotos te gustaría ver?', en:"Hi! Which photo album would you like to see?", pt:'Olá! Qual álbum de fotos gostaria de ver?', fr:'Bonjour! Quel album photo souhaitez-vous voir?', it:'Ciao! Quale album fotografico vorresti vedere?', de:'Hallo! Welches Fotoalbum möchten Sie sehen?' },
@@ -24,14 +24,14 @@ function getSaludo(contexto, lang) {
   return (SALUDOS[contexto] || SALUDOS.libre)[lang] || SALUDOS[contexto]?.['en'] || ''
 }
 
-/* ─── System prompt multiidioma ─── */
+/* ─── System prompt con flujo diagnóstico ─── */
 const NOMBRES_IDIOMA = { es:'español', en:'English', pt:'português', fr:'français', it:'italiano', de:'Deutsch' }
 
 function crearPrompt(lang, idioma) {
   const nombre = NOMBRES_IDIOMA[lang] || idioma
   return `You are Rosa, a warm and patient virtual assistant for elderly adults ("Doña Rosa" app).
 
-CRITICAL: Always respond in ${nombre} (${idioma}). Never switch languages.
+CRITICAL: Always respond in ${nombre} (${idioma}). Never switch languages. Keep ALL responses SHORT — maximum 2 sentences before any marker.
 
 Main screen has 4 large buttons:
 - GREEN (top-left): Call family
@@ -39,19 +39,120 @@ Main screen has 4 large buttons:
 - ORANGE (bottom-left): Pay services
 - RED (bottom-right): I need help
 
-Rules: Short sentences only (max 3). Be warm and encouraging. Describe buttons by color + position.
+Known contacts (use exact URLs):
+- María (hija): tel:+525512340001  |  WhatsApp: https://wa.me/525512340001
+- Carlos (hijo): tel:+525512340002  |  WhatsApp: https://wa.me/525512340002
+- Ana (nieta): tel:+525512340003  |  WhatsApp: https://wa.me/525512340003
+- Dr. Ramírez (doctor): tel:+525512340004  |  WhatsApp: https://wa.me/525512340004
 
-ACTION DETECTION — When user clearly wants to navigate to a section, add EXACTLY ONE marker on a new blank line at the end:
-[ACCION:llamar] → wants to call family
-[ACCION:fotos]  → wants to see photos
-[ACCION:pagar]  → wants to pay a service
-[ACCION:ayuda]  → needs emergency help
+═══ DIAGNOSTIC FLOW ═══
 
-Ask for confirmation in your text, then add the marker. Example:
-"Would you like me to open the family calls screen?"
-[ACCION:llamar]
+When user wants to DO something (call, navigate, open app, use a service):
 
-Only add a marker when the user clearly wants to navigate. Never add it for general chat.`
+STEP 1 — Ask clarifying questions ONE at a time using EXACTLY this format:
+[PREGUNTA]
+¿Your question here in ${nombre}?
+emoji Option label | internal_value
+emoji Option label | internal_value
+[/PREGUNTA]
+
+STEP 2 — When you have ALL needed info, confirm with EXACTLY this format:
+[CONFIRMAR]
+texto: Full action description in ${nombre} (e.g. "Voy a llamar a Ana (tu nieta) por teléfono")
+url: the_url_to_open
+[/CONFIRMAR]
+
+URL formats:
+- Regular call: tel:+52XXXXXXXXXX
+- WhatsApp: https://wa.me/52XXXXXXXXXX  (no + sign, no spaces in number)
+- App navigation: leave url empty and use [ACCION:X] instead
+
+Rules for questions:
+- Ask ONE question at a time, never two.
+- Skip questions if the user already answered in their message.
+- Always use button options [PREGUNTA], never ask for free text.
+- 2-4 options maximum per question.
+
+Example question flow for "quiero llamar a mi nieta":
+→ No ambiguity (only one nieta: Ana) → skip to CONFIRMAR directly
+→ "¿Cómo quieres llamar a Ana?" with options: 📞 Por teléfono | telefono  💬 Por WhatsApp | whatsapp
+
+IN-APP NAVIGATION — Only when user wants to go to a screen (not execute an action):
+[ACCION:llamar] → go to family calls screen
+[ACCION:fotos]  → go to photos screen
+[ACCION:pagar]  → go to pay services screen
+[ACCION:ayuda]  → go to help screen
+
+IMPORTANT: Use only ONE marker per response: either [PREGUNTA] or [CONFIRMAR] or [ACCION:X]. Never combine them.`
+}
+
+/* ─── Parser de marcadores en la respuesta ─── */
+function parsearRespuesta(texto) {
+  // PREGUNTA block
+  const pregMatch = texto.match(/\[PREGUNTA\]([\s\S]*?)\[\/PREGUNTA\]/i)
+  if (pregMatch) {
+    const contenido = pregMatch[1].trim()
+    const lineas = contenido.split('\n').map(l => l.trim()).filter(Boolean)
+    const pregunta = lineas[0] || ''
+    const items = lineas.slice(1).map(linea => {
+      const partes = linea.split('|')
+      const valor = partes[1]?.trim() || ''
+      const labelCompleto = partes[0]?.trim() || ''
+      const emojiMatch = labelCompleto.match(/^(\p{Emoji_Presentation}|\p{Emoji}️|[\u{1F300}-\u{1FAFF}]|\p{Emoji})\s*/u)
+      const emoji = emojiMatch ? emojiMatch[0].trim() : ''
+      const label = emoji ? labelCompleto.slice(emojiMatch[0].length).trim() : labelCompleto
+      return { emoji, label, valor: valor || label.toLowerCase() }
+    }).filter(o => o.label)
+    const textoLimpio = texto.replace(/\[PREGUNTA\][\s\S]*?\[\/PREGUNTA\]/gi, '').trim()
+    return { tipo: 'pregunta', textoLimpio, pregunta, items }
+  }
+
+  // CONFIRMAR block
+  const confMatch = texto.match(/\[CONFIRMAR\]([\s\S]*?)\[\/CONFIRMAR\]/i)
+  if (confMatch) {
+    const contenido = confMatch[1].trim()
+    const textoMatch = contenido.match(/texto:\s*(.+)/i)
+    const urlMatch   = contenido.match(/url:\s*(.+)/i)
+    const confirmTexto = textoMatch ? textoMatch[1].trim() : ''
+    const confirmUrl   = urlMatch   ? urlMatch[1].trim()   : ''
+    const textoLimpio = texto.replace(/\[CONFIRMAR\][\s\S]*?\[\/CONFIRMAR\]/gi, '').trim()
+    return { tipo: 'confirmacion', textoLimpio, confirmTexto, confirmUrl }
+  }
+
+  // ACCION inline
+  const accionMatch = texto.match(/\[ACCION:(\w+)\]/i)
+  const textoLimpio = texto.replace(/\[ACCION:\w+\]\n?/gi, '').trim()
+  return { tipo: 'accion', textoLimpio, accion: accionMatch ? accionMatch[1].toLowerCase() : null }
+}
+
+/* ─── Tarjeta de opciones ─── */
+function OpcionesCard({ pregunta, items, onSeleccionar }) {
+  return (
+    <div className="opciones-card">
+      <p className="opciones-pregunta">{pregunta}</p>
+      <div className="opciones-lista">
+        {items.map(op => (
+          <button key={op.valor} className="btn-opcion" onClick={() => onSeleccionar(op)}>
+            {op.emoji && <span className="btn-opcion-emoji">{op.emoji}</span>}
+            <span className="btn-opcion-label">{op.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Tarjeta de confirmación ─── */
+function ConfirmacionCard({ texto, url, onConfirmar, onCancelar, lang }) {
+  return (
+    <div className="confirmacion-card">
+      <p className="confirmacion-texto">{texto}</p>
+      <div className="confirmacion-botones">
+        <button className="btn-confirmar-si" onClick={() => onConfirmar(url)}>✅ {t('si', lang)}</button>
+        <button className="btn-confirmar-no" onClick={onCancelar}>❌ {t('no', lang)}</button>
+      </div>
+    </div>
+  )
 }
 
 /* ─── Pantalla Upgrade (inline) ─── */
@@ -125,19 +226,33 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [mensajes])
 
-  // Saludo en voz (solo en modo completo, no en burbuja compacta)
   useEffect(() => {
     if (compacto) return
     const id = setTimeout(() => hablar(saludo), 700)
     return () => clearTimeout(id)
   }, []) // eslint-disable-line
 
-  /* ─── Limpiar acción de confirmación ─── */
+  /* ─── Handlers de diagnóstico ─── */
+  function seleccionarOpcion(opcion, msgId) {
+    setMensajes(prev => prev.map(m => m.id === msgId ? { ...m, opciones: null } : m))
+    const texto = [opcion.emoji, opcion.label].filter(Boolean).join(' ').trim()
+    setTimeout(() => enviarRef.current?.(texto), 50)
+  }
+
+  function confirmarAccion(url, msgId) {
+    setMensajes(prev => prev.map(m => m.id === msgId ? { ...m, confirmacion: null } : m))
+    if (url) window.open(url, '_blank')
+  }
+
+  function cancelarConfirmacion(msgId) {
+    setMensajes(prev => prev.map(m => m.id === msgId ? { ...m, confirmacion: null } : m))
+  }
+
+  /* ─── Limpiar acción de navegación ─── */
   function limpiarAccion(id) {
     setMensajes(prev => prev.map(m => m.id === id ? { ...m, accion: null } : m))
   }
 
-  /* ─── Navegar desde confirmación ─── */
   function navegarDesde(accion) {
     detenerVoz()
     onNavegar?.(accion)
@@ -149,7 +264,6 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
     const texto = (textoDirecto ?? entrada).trim()
     if (!texto || cargando) return
 
-    // Verificar plan
     if (limiteAlcanzado) { setMostrarUpgrade(true); return }
 
     const apiKey = getApiKey()
@@ -187,29 +301,57 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
       for await (const ev of stream) {
         if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
           acumulado += ev.delta.text
+          // Strip from first marker block onward during streaming to avoid partial marker display
+          const textoVisible = acumulado
+            .replace(/\[PREGUNTA\][\s\S]*/i, '')
+            .replace(/\[CONFIRMAR\][\s\S]*/i, '')
+            .replace(/\[ACCION:\w+\]\n?/gi, '')
+            .trim()
           setMensajes(prev =>
-            prev.map(m => m.id === idRosa ? { ...m, texto: acumulado } : m)
+            prev.map(m => m.id === idRosa ? { ...m, texto: textoVisible } : m)
           )
         }
       }
 
-      // Detectar acción de navegación
-      const matchAccion = acumulado.match(/\[ACCION:(\w+)\]/i)
-      const textoLimpio = acumulado.replace(/\[ACCION:\w+\]\n?/gi, '').trim()
-      const accionDetectada = matchAccion ? matchAccion[1].toLowerCase() : null
+      // Parse the full response after streaming completes
+      const resultado = parsearRespuesta(acumulado)
 
-      if (accionDetectada && esPlanPlus && onNavegar) {
-        // Plan Plus: navegar automáticamente
-        setMensajes(prev => prev.map(m => m.id === idRosa ? { ...m, texto: textoLimpio, completo: true } : m))
-        hablar(textoLimpio)
-        setTimeout(() => navegarDesde(accionDetectada), 1500)
+      if (resultado.tipo === 'pregunta') {
+        setMensajes(prev => prev.map(m => m.id === idRosa ? {
+          ...m,
+          texto: resultado.textoLimpio,
+          opciones: { pregunta: resultado.pregunta, items: resultado.items },
+          completo: true,
+        } : m))
+        hablar([resultado.textoLimpio, resultado.pregunta].filter(Boolean).join(' '))
+
+      } else if (resultado.tipo === 'confirmacion') {
+        setMensajes(prev => prev.map(m => m.id === idRosa ? {
+          ...m,
+          texto: resultado.textoLimpio,
+          confirmacion: { texto: resultado.confirmTexto, url: resultado.confirmUrl },
+          completo: true,
+        } : m))
+        hablar([resultado.textoLimpio, resultado.confirmTexto].filter(Boolean).join('. '))
+
       } else {
-        setMensajes(prev => prev.map(m =>
-          m.id === idRosa
-            ? { ...m, texto: textoLimpio, accion: accionDetectada, completo: true }
+        // Normal or ACCION navigation
+        const accionDetectada = resultado.accion
+
+        if (accionDetectada && esPlanPlus && onNavegar) {
+          setMensajes(prev => prev.map(m => m.id === idRosa
+            ? { ...m, texto: resultado.textoLimpio, completo: true }
             : m
-        ))
-        hablar(textoLimpio)
+          ))
+          hablar(resultado.textoLimpio)
+          setTimeout(() => navegarDesde(accionDetectada), 1500)
+        } else {
+          setMensajes(prev => prev.map(m => m.id === idRosa
+            ? { ...m, texto: resultado.textoLimpio, accion: accionDetectada, completo: true }
+            : m
+          ))
+          hablar(resultado.textoLimpio)
+        }
       }
 
       consumirMensaje()
@@ -233,11 +375,11 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
 
   const tieneVoz = hayReconocimiento()
 
-  // ─ Modo compacto (burbuja flotante) ─
+  /* ─── Modo compacto (burbuja flotante) ─── */
   if (compacto) {
     return (
       <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-        {/* Header compacto */}
+        {/* Header */}
         <div style={{ background:'#6b3fa0', color:'white', padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', flexShrink:0 }}>
           <span style={{ fontSize:22, fontWeight:800 }}>🌸 Rosa</span>
           <span style={{ flex:1, fontSize:14, opacity:0.8 }}>{idioma}</span>
@@ -247,31 +389,49 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
           </button>
         </div>
 
-        {/* Mensajes compactos */}
-        <div style={{ flex:1, overflowY:'auto', padding:'12px', background:'#f5f0eb', display:'flex', flexDirection:'column', gap:10 }}>
+        {/* Mensajes */}
+        <div style={{ flex:1, overflowY:'auto', padding:'12px', background:'var(--p50)', display:'flex', flexDirection:'column', gap:10 }}>
           {mensajes.map(m => (
-            <div key={m.id} style={{ display:'flex', flexDirection: m.rol==='usuario' ? 'row-reverse' : 'row', gap:8, alignItems:'flex-end' }}>
-              {m.rol === 'rosa' && (
-                <button onClick={() => hablando ? detenerVoz() : m.completo && hablar(m.texto)}
-                  style={{ width:34, height:34, borderRadius:'50%', background: hablando ? '#2563eb' : '#6b3fa0', color:'white', border:'none', cursor:'pointer', fontSize:16, flexShrink:0 }}>
-                  {hablando ? '🔊' : '🌸'}
-                </button>
-              )}
-              <div style={{
-                maxWidth:'80%', padding:'10px 14px', borderRadius:16, fontSize:18,
-                background: m.rol==='usuario' ? '#6b3fa0' : 'white',
-                color: m.rol==='usuario' ? 'white' : '#222',
-                borderBottomLeftRadius: m.rol==='rosa' ? 4 : 16,
-                borderBottomRightRadius: m.rol==='usuario' ? 4 : 16,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.07)',
-              }}>
-                {m.texto || <span style={{ color:'#aaa' }}>…</span>}
-              </div>
-              {m.accion && (
-                <div style={{ display:'flex', gap:8, padding:'4px 0' }}>
-                  <button className="btn-si" style={{ fontSize:18, padding:'12px' }} onClick={() => navegarDesde(m.accion)}>{t('si', lang)}</button>
-                  <button className="btn-no" style={{ fontSize:18, padding:'12px' }} onClick={() => limpiarAccion(m.id)}>{t('no', lang)}</button>
+            <div key={m.id}>
+              <div style={{ display:'flex', flexDirection: m.rol==='usuario' ? 'row-reverse' : 'row', gap:8, alignItems:'flex-end' }}>
+                {m.rol === 'rosa' && (
+                  <button onClick={() => hablando ? detenerVoz() : m.completo && hablar(m.texto)}
+                    style={{ width:34, height:34, borderRadius:'50%', background: hablando ? '#2563eb' : '#6b3fa0', color:'white', border:'none', cursor:'pointer', fontSize:16, flexShrink:0 }}>
+                    {hablando ? '🔊' : '🌸'}
+                  </button>
+                )}
+                <div style={{
+                  maxWidth:'80%', padding:'10px 14px', borderRadius:16, fontSize:18,
+                  background: m.rol==='usuario' ? '#6b3fa0' : 'white',
+                  color: m.rol==='usuario' ? 'white' : '#222',
+                  borderBottomLeftRadius: m.rol==='rosa' ? 4 : 16,
+                  borderBottomRightRadius: m.rol==='usuario' ? 4 : 16,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.07)',
+                }}>
+                  {m.texto || <span style={{ color:'#aaa' }}>…</span>}
                 </div>
+                {m.accion && (
+                  <div style={{ display:'flex', gap:8, padding:'4px 0' }}>
+                    <button className="btn-si" style={{ fontSize:18, padding:'12px' }} onClick={() => navegarDesde(m.accion)}>{t('si', lang)}</button>
+                    <button className="btn-no" style={{ fontSize:18, padding:'12px' }} onClick={() => limpiarAccion(m.id)}>{t('no', lang)}</button>
+                  </div>
+                )}
+              </div>
+              {m.opciones && (
+                <OpcionesCard
+                  pregunta={m.opciones.pregunta}
+                  items={m.opciones.items}
+                  onSeleccionar={op => seleccionarOpcion(op, m.id)}
+                />
+              )}
+              {m.confirmacion && (
+                <ConfirmacionCard
+                  texto={m.confirmacion.texto}
+                  url={m.confirmacion.url}
+                  onConfirmar={url => confirmarAccion(url, m.id)}
+                  onCancelar={() => cancelarConfirmacion(m.id)}
+                  lang={lang}
+                />
               )}
             </div>
           ))}
@@ -281,7 +441,7 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
           <div ref={bottomRef} />
         </div>
 
-        {/* Input compacto */}
+        {/* Input */}
         <div style={{ padding:'10px 12px', background:'white', borderTop:'1px solid #e5e7eb', flexShrink:0 }}>
           {tieneVoz && (
             <div style={{ display:'flex', justifyContent:'center', marginBottom:8 }}>
@@ -311,7 +471,7 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
     )
   }
 
-  // ─ Modo completo (pantalla entera) ─
+  /* ─── Modo completo (pantalla entera) ─── */
   return (
     <div className="chat-rosa-contenedor">
       <div className="chat-rosa-header" style={{ borderBottom: `4px solid ${color}` }}>
@@ -350,11 +510,33 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
                 )}
               </div>
             </div>
+
+            {/* Botones de navegación ACCION */}
             {m.accion && (
               <div className="bloque-confirmacion">
                 <button className="btn-si" onClick={() => navegarDesde(m.accion)}>{t('si', lang)}</button>
                 <button className="btn-no" onClick={() => limpiarAccion(m.id)}>{t('no', lang)}</button>
               </div>
+            )}
+
+            {/* Opciones de diagnóstico */}
+            {m.opciones && (
+              <OpcionesCard
+                pregunta={m.opciones.pregunta}
+                items={m.opciones.items}
+                onSeleccionar={op => seleccionarOpcion(op, m.id)}
+              />
+            )}
+
+            {/* Confirmación de acción */}
+            {m.confirmacion && (
+              <ConfirmacionCard
+                texto={m.confirmacion.texto}
+                url={m.confirmacion.url}
+                onConfirmar={url => confirmarAccion(url, m.id)}
+                onCancelar={() => cancelarConfirmacion(m.id)}
+                lang={lang}
+              />
             )}
           </div>
         ))}
