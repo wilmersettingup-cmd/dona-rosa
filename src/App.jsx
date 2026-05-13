@@ -8,6 +8,7 @@ import BurbujaRosa from './components/BurbujaRosa'
 import ActivacionVoz from './components/ActivacionVoz'
 import PantallaAjustes from './components/PantallaAjustes'
 import PantallaAuth from './components/auth/PantallaAuth'
+import PantallaOnboarding from './components/PantallaOnboarding'
 import PantallaLlamarFamilia from './components/PantallaLlamarFamilia'
 import PantallaVerFotos from './components/PantallaVerFotos'
 import PantallaPagarServicios from './components/PantallaPagarServicios'
@@ -321,6 +322,9 @@ export default function App() {
   const [pantalla, setPantalla]         = useState(PANTALLAS.INICIO)
   const [modoSinLogin, setModoSinLogin] = useState(false)
   const [guidanceTarget, setGuidanceTarget] = useState(null)
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => !!localStorage.getItem('drosa-onboarding-v1')
+  )
   const { lang, idioma, sincronizarDesdeFirestore } = useApp()
   const { user, loading, cerrarSesion, firebaseConfigurado } = useAuth()
 
@@ -352,6 +356,16 @@ export default function App() {
   const autenticado = user || modoSinLogin || !firebaseConfigurado
   if (!autenticado) {
     return <PantallaAuth lang={lang} onContinuarSinLogin={() => setModoSinLogin(true)} />
+  }
+
+  /* ── Onboarding (primera vez) ── */
+  if (!onboardingDone) {
+    return (
+      <PantallaOnboarding onComplete={() => {
+        localStorage.setItem('drosa-onboarding-v1', '1')
+        setOnboardingDone(true)
+      }} />
+    )
   }
 
   const esChat    = PANTALLAS_CHAT.has(pantalla)
