@@ -14,6 +14,39 @@ import PantallaPagarServicios from './components/PantallaPagarServicios'
 import PantallaNecesitoAyuda from './components/PantallaNecesitoAyuda'
 import { hayReconocimiento } from './hooks/useVoz'
 
+/* ── Iconos SVG de línea (estilo SF Symbols / Feather) ── */
+const IcoChat = () => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    <circle cx="9" cy="10" r="0.9" fill="currentColor" stroke="none"/>
+    <circle cx="12" cy="10" r="0.9" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="10" r="0.9" fill="currentColor" stroke="none"/>
+  </svg>
+)
+const IcoPhone = () => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+)
+const IcoPhoto = () => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="3"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+)
+const IcoCard = () => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="4" width="22" height="16" rx="2.5"/>
+    <line x1="1" y1="10" x2="23" y2="10"/>
+  </svg>
+)
+const IcoPulse = () => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+)
+
 const PANTALLAS = {
   INICIO: 'inicio',
   LLAMAR: 'llamar', FOTOS: 'fotos', PAGAR: 'pagar', AYUDA: 'ayuda',
@@ -251,20 +284,20 @@ function PantallaInicio({ onNavegar, guidanceTarget }) {
   const h = hora.getHours()
   const saludo = h < 12 ? t('buenos_dias', lang) : h < 19 ? t('buenas_tardes', lang) : t('buenas_noches', lang)
 
+  // Rosa va primero — es el botón principal y más importante
   const botones = [
-    { id: PANTALLAS.LLAMAR, voz: 'llamar', icono: '📞', key: 'llamar_familia', clase: 'boton-verde'  },
-    { id: PANTALLAS.FOTOS,  voz: 'fotos',  icono: '🖼️', key: 'ver_fotos',      clase: 'boton-azul'   },
-    { id: PANTALLAS.PAGAR,  voz: 'pagar',  icono: '💳', key: 'pagar_servicios', clase: 'boton-naranja' },
-    { id: PANTALLAS.AYUDA,  voz: 'ayuda',  icono: '🆘', key: 'necesito_ayuda',  clase: 'boton-rojo'   },
-    { id: PANTALLAS.LIBRE,  voz: 'rosa',   icono: '🌸', key: 'hablar_rosa',     clase: 'boton-morado boton-libre' },
+    { id: PANTALLAS.LIBRE,  voz: 'rosa',   Ico: IcoChat,  key: 'hablar_rosa',     clase: 'boton-morado boton-libre' },
+    { id: PANTALLAS.LLAMAR, voz: 'llamar', Ico: IcoPhone, key: 'llamar_familia',  clase: 'boton-verde'  },
+    { id: PANTALLAS.FOTOS,  voz: 'fotos',  Ico: IcoPhoto, key: 'ver_fotos',       clase: 'boton-azul'   },
+    { id: PANTALLAS.PAGAR,  voz: 'pagar',  Ico: IcoCard,  key: 'pagar_servicios', clase: 'boton-naranja' },
+    { id: PANTALLAS.AYUDA,  voz: 'ayuda',  Ico: IcoPulse, key: 'necesito_ayuda',  clase: 'boton-rojo'   },
   ]
 
   return (
     <main className="pantalla-principal">
       <div className="bienvenida">
-        <h2>{saludo} 👋</h2>
+        <h2>{saludo}</h2>
         <p>{t('que_deseas', lang)}</p>
-        <p style={{ fontSize: 18, color: '#6b3fa0', marginTop: 4 }}>{t('rosa_lista', lang)}</p>
       </div>
       <div className="grid-botones">
         {botones.map(b => (
@@ -274,7 +307,7 @@ function PantallaInicio({ onNavegar, guidanceTarget }) {
             className={`boton-principal ${b.clase}${guidanceTarget === b.voz ? ' boton-guiado' : ''}`}
             onClick={() => onNavegar(b.id)}
           >
-            <span className="icono">{b.icono}</span>
+            <span className="icono-svg"><b.Ico /></span>
             {t(b.key, lang)}
           </button>
         ))}

@@ -9,16 +9,32 @@
   --font-lg: 28px;
   --font-xl: 36px;
   --font-title: 48px;
-  --radius: 20px;
-  --shadow: 0 6px 20px rgba(0,0,0,0.15);
-  --bg: #f5f0eb;
+  --radius: 22px;
+  --shadow: 0 8px 28px rgba(18, 8, 51, 0.14);
+
+  /* ── Nueva paleta morada ── */
+  --p950: #0d0620;
+  --p900: #180e38;
+  --p800: #221450;
+  --p700: #2d1b68;
+  --p600: #3d2575;
+  --p500: #4f3090;
+  --p400: #6b4fb8;
+  --p300: #957ad4;
+  --p100: #ddd0f8;
+  --p50:  #f0ecff;
+
+  --bg: var(--p50);
+  --text-main: var(--p900);
+  --text-soft: #6b5b90;
 }
 
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: -apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   min-height: 100vh;
   font-size: var(--font-base);
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
