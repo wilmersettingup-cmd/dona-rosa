@@ -8,9 +8,8 @@
  *  guiando    → muestra flecha + botón iluminado
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Anthropic from '@anthropic-ai/sdk'
+import { streamChat } from '../utils/api'
 import { useSintesisVoz } from '../hooks/useVoz'
-import { getApiKey } from '../utils/storage'
 import { t } from '../i18n/t'
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -203,31 +202,19 @@ export default function ActivacionVoz({ idioma, lang, onGuia, onDismiss }) {
     setEstado('procesando')
     setTranscripcion(texto)
 
-    const apiKey = getApiKey()
-    if (!apiKey) {
-      hablar(t('error_api_key', lang).replace('⚙️ ', ''))
-      setTimeout(cerrar, 3000)
-      return
-    }
-
     try {
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
-      const stream = client.messages.stream({
-        model:     'claude-haiku-4-5',
-        max_tokens: 200,
-        system:    promptGuia(lang, idioma),
-        messages:  [{ role: 'user', content: texto }],
-      })
-
       let acumulado = ''
       setEstado('guiando')
 
-      for await (const ev of stream) {
-        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
-          acumulado += ev.delta.text
-          const limpio = acumulado.replace(/\[GUIA:\w+\]\n?/gi, '').trim()
-          setTextoRosa(limpio)
-        }
+      for await (const text of streamChat({
+        messages:   [{ role: 'user', content: texto }],
+        system:     promptGuia(lang, idioma),
+        model:      'claude-haiku-4-5',
+        max_tokens: 200,
+      })) {
+        acumulado += text
+        const limpio = acumulado.replace(/\[GUIA:\w+\]\n?/gi, '').trim()
+        setTextoRosa(limpio)
       }
 
       // Detectar guia visual

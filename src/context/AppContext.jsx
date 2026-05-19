@@ -4,7 +4,6 @@ import { detectarIdioma } from '../hooks/useVoz'
 import { getLang } from '../i18n/t'
 import { cargarDatosUsuario, guardarDatosUsuario } from './AuthContext'
 import { db } from '../firebase/config'
-import { getApiKey, setApiKey } from '../utils/storage'
 
 const AppContext = createContext(null)
 
@@ -61,7 +60,6 @@ export function AppProvider({ children }) {
       }
       const count = datos.mensajesPorFecha?.[hoyFecha()] ?? 0
       setMensajesHoy(count); localStorage.setItem(hoyKey(), String(count))
-      if (datos.apiKey && !getApiKey()) setApiKey(datos.apiKey)
     } catch { /* usa datos locales */ }
   }
 
@@ -98,17 +96,13 @@ export function AppProvider({ children }) {
     syncFirestore({ plan: PLANES.PLUS })
   }, [])
 
-  const guardarApiKeyNube = useCallback((apiKey) => {
-    syncFirestore({ apiKey })
-  }, [])
-
   return (
     <AppContext.Provider value={{
       idioma, lang,
       plan, esPlanPlus, esPlanTrial, esIlimitado,
       mensajesHoy, mensajesRestantes, limiteAlcanzado, diasTrialRestantes,
       consumirMensaje, activarTrial, activarPlus,
-      sincronizarDesdeFirestore, guardarApiKeyNube,
+      sincronizarDesdeFirestore,
     }}>
       {children}
     </AppContext.Provider>

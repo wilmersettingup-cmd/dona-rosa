@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Anthropic from '@anthropic-ai/sdk'
-import { getApiKey } from '../utils/storage'
+import { streamChat } from '../utils/api'
 import {
   hayReconocimiento,
   useReconocimientoVoz, useSintesisVoz,
@@ -266,9 +265,6 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
 
     if (limiteAlcanzado) { setMostrarUpgrade(true); return }
 
-    const apiKey = getApiKey()
-    if (!apiKey) { setError(t('error_api_key', lang)); return }
-
     detenerVoz()
     setMostrarUpgrade(false)
 
@@ -283,34 +279,27 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
     setMensajes(prev => [...prev, { id: idRosa, rol: 'rosa', texto: '', completo: false }])
 
     try {
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
-
       const historialApi = historialActual.slice(1).map(m => ({
         role: m.rol === 'usuario' ? 'user' : 'assistant',
         content: m.texto,
       }))
 
-      const stream = client.messages.stream({
+      let acumulado = ''
+      for await (const text of streamChat({
+        messages: historialApi,
+        system: crearPrompt(lang, idioma),
         model: 'claude-haiku-4-5',
         max_tokens: 512,
-        system: crearPrompt(lang, idioma),
-        messages: historialApi,
-      })
-
-      let acumulado = ''
-      for await (const ev of stream) {
-        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
-          acumulado += ev.delta.text
-          // Strip from first marker block onward during streaming to avoid partial marker display
-          const textoVisible = acumulado
-            .replace(/\[PREGUNTA\][\s\S]*/i, '')
-            .replace(/\[CONFIRMAR\][\s\S]*/i, '')
-            .replace(/\[ACCION:\w+\]\n?/gi, '')
-            .trim()
-          setMensajes(prev =>
-            prev.map(m => m.id === idRosa ? { ...m, texto: textoVisible } : m)
-          )
-        }
+      })) {
+        acumulado += text
+        const textoVisible = acumulado
+          .replace(/\[PREGUNTA\][\s\S]*/i, '')
+          .replace(/\[CONFIRMAR\][\s\S]*/i, '')
+          .replace(/\[ACCION:\w+\]\n?/gi, '')
+          .trim()
+        setMensajes(prev =>
+          prev.map(m => m.id === idRosa ? { ...m, texto: textoVisible } : m)
+        )
       }
 
       // Parse the full response after streaming completes
@@ -356,8 +345,8 @@ export default function ChatRosa({ contexto = 'libre', onCerrar, compacto = fals
 
       consumirMensaje()
 
-    } catch (err) {
-      const msg = err.status === 401 ? t('error_api_invalida', lang) : t('error_conexion', lang)
+    } catch {
+      const msg = t('error_conexion', lang)
       setMensajes(prev => prev.map(m =>
         m.id === idRosa ? { ...m, texto: msg, completo: true, esError: true } : m
       ))
