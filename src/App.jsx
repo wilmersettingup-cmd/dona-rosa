@@ -291,8 +291,14 @@ function Encabezado({ pantalla, onVolver, user, onAjustes, onCerrarSesion }) {
 function PantallaInicio({ onNavegar, guidanceTarget }) {
   const hora = usarHora()
   const { lang } = useApp()
+  const { user } = useAuth()
   const h = hora.getHours()
-  const saludo = h < 12 ? t('buenos_dias', lang) : h < 19 ? t('buenas_tardes', lang) : t('buenas_noches', lang)
+  const base = h < 12 ? t('buenos_dias', lang) : h < 19 ? t('buenas_tardes', lang) : t('buenas_noches', lang)
+
+  const primerNombre = user?.displayName?.split(' ')[0]
+    || user?.email?.split('@')[0]
+    || null
+  const saludo = primerNombre ? `${base}, ${primerNombre}` : base
 
   // Rosa va primero — es el botón principal y más importante
   const botones = [
