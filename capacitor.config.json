@@ -1,0 +1,14 @@
+{
+  "appId": "com.donarosa.app",
+  "appName": "Doña Rosa",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

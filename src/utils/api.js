@@ -1,5 +1,9 @@
+import { Capacitor } from '@capacitor/core'
+
+const API_BASE = Capacitor.isNativePlatform() ? 'https://dona-rosa.vercel.app' : ''
+
 export async function* streamChat({ messages, system, model = 'claude-haiku-4-5', max_tokens = 512 }) {
-  const res = await fetch('/api/chat', {
+  const res = await fetch(`${API_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, system, model, max_tokens }),

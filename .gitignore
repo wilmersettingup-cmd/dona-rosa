@@ -22,3 +22,8 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 .vercel
+
+# Capacitor — build artifacts nativos (no se commitean)
+ios/App/App/public/
+android/app/src/main/assets/public/
+# Mantener la estructura nativa pero ignorar builds generados
