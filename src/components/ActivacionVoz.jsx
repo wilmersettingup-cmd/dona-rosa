@@ -94,7 +94,7 @@ export default function ActivacionVoz({ idioma, lang, onGuia, onDismiss }) {
     try {
       const rec = new SR()
       rec.lang            = idioma
-      rec.continuous      = false
+      rec.continuous      = true
       rec.interimResults  = true
       rec.maxAlternatives = 1
 
