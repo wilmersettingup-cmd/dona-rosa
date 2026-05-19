@@ -242,8 +242,13 @@ function Encabezado({ pantalla, onVolver, user, onAjustes, onCerrarSesion }) {
   const { lang, idioma } = useApp()
   const locale = LOCALE_MAP[lang] || idioma
 
-  const formatHora  = d => d.toLocaleTimeString(locale,  { hour: '2-digit', minute: '2-digit' })
   const formatFecha = d => d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+  const horaPartes  = d => {
+    const h  = d.getHours() % 12 || 12
+    const m  = String(d.getMinutes()).padStart(2, '0')
+    const ap = d.getHours() >= 12 ? 'pm' : 'am'
+    return { numero: `${h}:${m}`, ampm: ap }
+  }
 
   const esChat = PANTALLAS_CHAT.has(pantalla)
   if (esChat) return null
@@ -263,15 +268,19 @@ function Encabezado({ pantalla, onVolver, user, onAjustes, onCerrarSesion }) {
     )
   }
 
+  const { numero, ampm } = horaPartes(hora)
+
   return (
     <header className="encabezado">
       <div>
-        <h1>🌸 Doña Rosa</h1>
+        <h1 style={{ whiteSpace: 'nowrap' }}>🌸 Doña Rosa</h1>
         <div className="saludo">{formatFecha(hora)}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <ContadorPlan />
-        <div className="hora">{formatHora(hora)}</div>
+        <div className="hora">
+          {numero}<span className="hora-ampm">{ampm}</span>
+        </div>
         <AvatarPerfil user={user} onAjustes={onAjustes} onCerrarSesion={onCerrarSesion} />
       </div>
     </header>
